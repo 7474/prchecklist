@@ -119,7 +119,9 @@ exports[` 2`] = `
           </span>
         </div>
       </li>
-      <li>
+      <li
+        className="skipped"
+      >
         <div
           className="check"
         >
@@ -148,6 +150,11 @@ exports[` 2`] = `
           foo bar baz foo foo foo foo foo foo foof foohof ofhfof
         </div>
          
+        <div
+          className="skipped-mark"
+        >
+          skipped
+        </div>
         <div
           className="user"
         >
