@@ -4,19 +4,17 @@ WORKDIR /app
 
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-# FIXME
 RUN \
-    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
-    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-    apt-get update && \
-    apt-get install --no-install-recommends -yq nodejs yarn && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install --no-install-recommends -yq nodejs && \
+    corepack enable && \
     apt-get clean && \
     rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY Makefile *.json *.js yarn.lock *.go ./
+COPY Makefile *.json *.js pnpm-lock.yaml *.go ./
 COPY static static
 COPY lib lib
 COPY cmd cmd
