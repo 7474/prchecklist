@@ -2,3 +2,5 @@ allowBuilds:
   '@parcel/watcher': true
   puppeteer: true
   unrs-resolver: true
+# Do not install package versions published less than 3 days ago.
+minimumReleaseAge: 4320
