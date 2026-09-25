@@ -64,6 +64,14 @@ exports[` 2`] = `
       Release 2017-10-11 20:18:22 +0900
     </span>
   </h1>
+  <p
+    className="skipped-summary"
+  >
+    1
+     of 
+    5
+     items are skipped and do not need to be checked
+  </p>
   <div
     className="items"
     id="checklist-items"
@@ -118,7 +126,9 @@ exports[` 2`] = `
           </span>
         </div>
       </li>
-      <li>
+      <li
+        className="skipped"
+      >
         <div
           className="check"
         >
@@ -140,6 +150,12 @@ exports[` 2`] = `
           </a>
         </div>
          
+        <div
+          className="skipped-mark"
+          title="no-qa"
+        >
+          skipped
+        </div>
         <div
           className="title"
           title="foo bar baz foo foo foo foo foo foo foof foohof ofhfof"
