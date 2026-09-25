@@ -1,8 +1,4 @@
 allowBuilds:
   '@parcel/watcher': true
-  aws-sdk: true
-  core-js: true
-  core-js-pure: true
-  es5-ext: true
   puppeteer: true
   unrs-resolver: true

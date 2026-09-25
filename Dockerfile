@@ -5,8 +5,9 @@ WORKDIR /app
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    curl -fsSL https://deb.nodesource.com/setup_26.x | bash - && \
     apt-get install --no-install-recommends -yq nodejs && \
+    npm install -g corepack@0.36.0 && \
     corepack enable && \
     apt-get clean && \
     rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
@@ -14,7 +15,7 @@ RUN \
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY Makefile *.json *.js pnpm-lock.yaml *.go ./
+COPY Makefile *.json *.js pnpm-lock.yaml pnpm-workspace.yaml *.go ./
 COPY static static
 COPY lib lib
 COPY cmd cmd

@@ -27,7 +27,9 @@ module.exports = [
     },
     settings: {
       react: {
-        version: "detect",
+        // eslint-plugin-react's "detect" calls context.getFilename(), which
+        // ESLint 10 removed. Keep this in sync with the react dependency.
+        version: "19.3",
       },
     },
     rules: {
