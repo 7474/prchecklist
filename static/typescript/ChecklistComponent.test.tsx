@@ -1,25 +1,31 @@
 import * as React from "react";
+import { act } from "react";
 import { ChecklistComponent } from "./ChecklistComponent";
 import * as renderer from "react-test-renderer";
 
 jest.mock("./api");
 
 test("", async () => {
-  const component = renderer.create(
-    <ChecklistComponent
-      checklistRef={{
-        Number: 1,
-        Owner: "test",
-        Repo: "test",
-        Stage: "production",
-      }}
-    />
-  );
+  let component!: renderer.ReactTestRenderer;
+  act(() => {
+    component = renderer.create(
+      <ChecklistComponent
+        checklistRef={{
+          Number: 1,
+          Owner: "test",
+          Repo: "test",
+          Stage: "production",
+        }}
+      />
+    );
+  });
 
   let tree = component.toJSON();
   expect(tree).toMatchSnapshot();
 
-  await Promise.resolve();
+  await act(async () => {
+    await Promise.resolve();
+  });
 
   tree = component.toJSON();
   expect(tree).toMatchSnapshot();

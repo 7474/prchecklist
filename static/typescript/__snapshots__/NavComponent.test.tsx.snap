@@ -1,3 +1,22 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[` 1`] = `null`;
+exports[` 1`] = `
+<nav>
+  <div
+    className="logo"
+  >
+    <strong>
+      prchecklist HEAD
+    </strong>
+  </div>
+  <div
+    className="stages"
+  />
+  <a
+    className="user-signedin"
+    href="/auth?return_to=%2F"
+  >
+    Login
+  </a>
+</nav>
+`;
