@@ -111,6 +111,13 @@ func (u Usecase) GetChecklist(ctx context.Context, clRef prchecklist.ChecklistRe
 
 	for _, item := range checklist.Items {
 		item.Skipped = checklist.Config.ShouldSkip(item.Labels, checklist.Stage)
+		item.ByBot = checklist.Config.IsBot(item.Author.Login)
+		if user := checklist.Config.ResponsibleUser(item.PullRequest); user != item.User {
+			// Copy the pull request, which may be shared through the gateway's cache.
+			pr := *item.PullRequest
+			pr.User = user
+			item.PullRequest = &pr
+		}
 	}
 
 	// may move to before fetching feature pullreqs

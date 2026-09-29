@@ -93,6 +93,9 @@ nav .logo {
             @extend .uk-text-small;
             @extend .uk-text-muted;
             line-height: inherit;
+            > .via {
+                opacity: 0.7;
+            }
         }
         > .skipped-mark {
             @extend .uk-label;

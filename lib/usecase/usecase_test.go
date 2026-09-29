@@ -149,6 +149,89 @@ skip:
 	assert.False(t, cl.Item(4).Skipped, "#4 has no labels")
 }
 
+func TestUseCase_GetChecklist_ResponsibleUserOfBotPullRequests(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	repo := repository_mock.NewMockCoreRepository(ctrl)
+	github := NewMockGitHubGateway(ctrl)
+
+	clRef := prchecklist.ChecklistRef{Owner: "test", Repo: "test", Number: 1, Stage: "qa"}
+
+	github.EXPECT().GetPullRequest(
+		gomock.Any(),
+		clRef,
+		true,
+	).Return(&prchecklist.PullRequest{
+		Owner: "test",
+		Repo:  "test",
+		Commits: []prchecklist.Commit{
+			{Message: "Merge pull request #2 "},
+			{Message: "Merge pull request #3 "},
+			{Message: "Merge pull request #4 "},
+		},
+		ConfigBlobID: "DUMMY-CONFIG-BLOB-ID",
+	}, context.Background(), nil)
+
+	renovate := prchecklist.GitHubUserSimple{Login: "renovate"}
+	merger := prchecklist.GitHubUserSimple{Login: "merger"}
+	assignee := prchecklist.GitHubUserSimple{Login: "assignee"}
+
+	// The gateway may return a cached pull request; it must not be modified.
+	botPullReq := &prchecklist.PullRequest{Number: 2, User: renovate, Author: renovate, MergedBy: merger}
+
+	github.EXPECT().GetPullRequest(
+		gomock.Any(),
+		prchecklist.ChecklistRef{Owner: "test", Repo: "test", Number: 2},
+		false,
+	).Return(botPullReq, context.Background(), nil)
+
+	github.EXPECT().GetPullRequest(
+		gomock.Any(),
+		prchecklist.ChecklistRef{Owner: "test", Repo: "test", Number: 3},
+		false,
+	).Return(&prchecklist.PullRequest{Number: 3, User: assignee, Author: renovate, Assignee: assignee, MergedBy: merger}, context.Background(), nil)
+
+	github.EXPECT().GetPullRequest(
+		gomock.Any(),
+		prchecklist.ChecklistRef{Owner: "test", Repo: "test", Number: 4},
+		false,
+	).Return(&prchecklist.PullRequest{Number: 4, User: prchecklist.GitHubUserSimple{Login: "author"}, Author: prchecklist.GitHubUserSimple{Login: "author"}, MergedBy: merger}, context.Background(), nil)
+
+	github.EXPECT().GetBlob(
+		gomock.Any(),
+		clRef,
+		"DUMMY-CONFIG-BLOB-ID",
+	).Return(
+		[]byte(`---
+stages:
+  - qa
+bots:
+  - renovate[bot]
+`),
+		nil,
+	)
+
+	repo.EXPECT().GetChecks(gomock.Any(), clRef).
+		Return(prchecklist.Checks{}, nil)
+
+	repo.EXPECT().GetUsers(gomock.Any(), gomock.Len(0)).
+		Return(map[int]prchecklist.GitHubUser{}, nil)
+
+	app := New(github, repo)
+
+	cl, err := app.GetChecklist(context.Background(), clRef)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "merger", cl.Item(2).User.Login, "#2 is a bot pull request without assignees")
+	assert.True(t, cl.Item(2).ByBot)
+	assert.Equal(t, "renovate", botPullReq.User.Login, "the pull request returned by the gateway is not modified")
+	assert.Equal(t, "assignee", cl.Item(3).User.Login, "#3 is a bot pull request with an assignee")
+	assert.True(t, cl.Item(3).ByBot)
+	assert.Equal(t, "author", cl.Item(4).User.Login, "#4 is not a bot pull request")
+	assert.False(t, cl.Item(4).ByBot)
+}
+
 func setupMocks(clRef prchecklist.ChecklistRef, github *MockGitHubGateway, repo *repository_mock.MockCoreRepository) {
 	github.EXPECT().GetPullRequest(
 		gomock.Any(),

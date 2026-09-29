@@ -137,7 +137,18 @@ export class ChecklistComponent extends React.Component<
                   <div className="title" title={item.Title}>
                     {item.Title}
                   </div>{" "}
-                  <div className="user">@{item.User.Login}</div>{" "}
+                  <div className="user">
+                    @{item.User.Login}
+                    {item.ByBot && item.User.Login !== item.Author.Login ? (
+                      <span
+                        className="via"
+                        title={`Authored by ${item.Author.Login}`}
+                      >
+                        {" "}
+                        via @{item.Author.Login}
+                      </span>
+                    ) : null}
+                  </div>{" "}
                   <div className="checkedby">
                     {item.CheckedBy.map((user) => {
                       return (

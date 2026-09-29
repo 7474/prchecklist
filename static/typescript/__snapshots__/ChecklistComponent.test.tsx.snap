@@ -250,7 +250,15 @@ exports[` 2`] = `
           class="user"
         >
           @
-          werckerbot
+          motemen
+          <span
+            class="via"
+            title="Authored by werckerbot"
+          >
+             
+            via @
+            werckerbot
+          </span>
         </div>
          
         <div

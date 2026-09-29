@@ -89,6 +89,75 @@ func TestGitHub_GetPullRequest_ReturnsLabels(t *testing.T) {
 	assert.Equal(t, []string{"no-qa", "bug"}, pr.Labels)
 }
 
+func TestGitHub_GetPullRequest_ReturnsAuthorAssigneeAndMergedBy(t *testing.T) {
+	tests := []struct {
+		name         string
+		assignees    []interface{}
+		expectedUser string
+		expectedAsgn string
+	}{
+		{"without assignees", []interface{}{}, "renovate", ""},
+		{
+			"with an assignee",
+			[]interface{}{map[string]interface{}{"node": map[string]interface{}{"login": "assignee"}}},
+			"assignee",
+			"assignee",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/api/graphql", func(w http.ResponseWriter, r *http.Request) {
+				res := map[string]interface{}{
+					"data": map[string]interface{}{
+						"repository": map[string]interface{}{
+							"isPrivate": false,
+							"pullRequest": map[string]interface{}{
+								"url":    "http://example.com/2",
+								"title":  "Update dependency foo to v2",
+								"number": 2,
+								"author": map[string]interface{}{
+									"login": "renovate",
+								},
+								"mergedBy": map[string]interface{}{
+									"login": "merger",
+								},
+								"assignees": map[string]interface{}{
+									"edges": tt.assignees,
+								},
+								"labels": map[string]interface{}{
+									"nodes": []interface{}{},
+								},
+							},
+						},
+					},
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(res)
+			})
+
+			ts := httptest.NewTLSServer(mux)
+			defer ts.Close()
+
+			u, _ := url.Parse(ts.URL)
+			g := githubGateway{
+				domain: u.Host,
+			}
+
+			ctx := context.WithValue(context.Background(), prchecklist.ContextKeyHTTPClient, ts.Client())
+
+			pr, err := g.getPullRequest(ctx, prchecklist.ChecklistRef{Owner: "o", Repo: "r", Number: 2}, false)
+
+			require.NoError(t, err)
+			assert.Equal(t, "renovate", pr.Author.Login)
+			assert.Equal(t, "merger", pr.MergedBy.Login)
+			assert.Equal(t, tt.expectedAsgn, pr.Assignee.Login)
+			assert.Equal(t, tt.expectedUser, pr.User.Login)
+		})
+	}
+}
+
 func TestGitHub_GetPullRequest_UsesCompareCommitsWhenTooManyCommits(t *testing.T) {
 	mux := http.NewServeMux()
 
