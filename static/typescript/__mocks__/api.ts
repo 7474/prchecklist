@@ -90,6 +90,7 @@ export function getChecklist(
           Labels: [],
           Skipped: false,
           ByBot: false,
+          Unassigned: false,
           CheckedBy: [
             {
               ID: 8465,
@@ -115,6 +116,7 @@ export function getChecklist(
           Labels: ["no-qa"],
           Skipped: true,
           ByBot: false,
+          Unassigned: false,
           CheckedBy: [],
         },
         {
@@ -134,6 +136,7 @@ export function getChecklist(
           Labels: [],
           Skipped: false,
           ByBot: false,
+          Unassigned: false,
           CheckedBy: [
             {
               ID: 8465,
@@ -159,6 +162,7 @@ export function getChecklist(
           Labels: [],
           Skipped: false,
           ByBot: true,
+          Unassigned: false,
           CheckedBy: [],
         },
         {
@@ -169,15 +173,16 @@ export function getChecklist(
           Repo: "test-repository",
           Number: 33,
           IsPrivate: false,
-          User: { Login: "motemen" },
-          Author: { Login: "motemen" },
+          User: { Login: "werckerbot" },
+          Author: { Login: "werckerbot" },
           Assignee: { Login: "" },
-          MergedBy: { Login: "" },
+          MergedBy: { Login: "werckerbot" },
           Commits: [],
           ConfigBlobID: "",
           Labels: [],
           Skipped: false,
-          ByBot: false,
+          ByBot: true,
+          Unassigned: true,
           CheckedBy: [],
         },
       ],

@@ -159,56 +159,78 @@ func TestChecklistConfig_IsBot(t *testing.T) {
 }
 
 func TestChecklistConfig_ResponsibleUser(t *testing.T) {
-	config := &ChecklistConfig{Bots: []string{"renovate[bot]"}}
+	config := &ChecklistConfig{Bots: []string{"renovate[bot]", "dependabot[bot]"}}
 
 	tests := []struct {
-		name     string
-		config   *ChecklistConfig
-		pr       PullRequest
-		expected string
+		name       string
+		config     *ChecklistConfig
+		pr         PullRequest
+		expected   string
+		expectedOk bool
 	}{
 		{
 			"bot pull request without assignees is on the merger",
 			config,
 			PullRequest{User: GitHubUserSimple{Login: "renovate"}, Author: GitHubUserSimple{Login: "renovate"}, MergedBy: GitHubUserSimple{Login: "merger"}},
 			"merger",
+			true,
 		},
 		{
 			"bot pull request with an assignee is on the assignee",
 			config,
-			PullRequest{User: GitHubUserSimple{Login: "assignee"}, Author: GitHubUserSimple{Login: "renovate"}, Assignee: GitHubUserSimple{Login: "assignee"}, MergedBy: GitHubUserSimple{Login: "merger"}},
+			PullRequest{User: GitHubUserSimple{Login: "assignee"}, Author: GitHubUserSimple{Login: "renovate"}, Assignee: GitHubUserSimple{Login: "assignee"}, MergedBy: GitHubUserSimple{Login: "renovate"}},
 			"assignee",
+			true,
 		},
 		{
-			"bot pull request merged by a bot stays on the author",
+			"bot pull request merged by itself is on nobody",
 			config,
 			PullRequest{User: GitHubUserSimple{Login: "renovate"}, Author: GitHubUserSimple{Login: "renovate"}, MergedBy: GitHubUserSimple{Login: "renovate"}},
 			"renovate",
+			false,
 		},
 		{
-			"bot pull request not merged stays on the author",
+			"bot pull request merged by another bot is on nobody",
+			config,
+			PullRequest{User: GitHubUserSimple{Login: "dependabot"}, Author: GitHubUserSimple{Login: "dependabot"}, MergedBy: GitHubUserSimple{Login: "renovate"}},
+			"dependabot",
+			false,
+		},
+		{
+			"bot pull request with unknown merger is on nobody",
 			config,
 			PullRequest{User: GitHubUserSimple{Login: "renovate"}, Author: GitHubUserSimple{Login: "renovate"}},
 			"renovate",
+			false,
 		},
 		{
 			"human pull request is on the author even if merged by another user",
 			config,
 			PullRequest{User: GitHubUserSimple{Login: "author"}, Author: GitHubUserSimple{Login: "author"}, MergedBy: GitHubUserSimple{Login: "merger"}},
 			"author",
+			true,
+		},
+		{
+			"human pull request merged by a bot is on the author",
+			config,
+			PullRequest{User: GitHubUserSimple{Login: "author"}, Author: GitHubUserSimple{Login: "author"}, MergedBy: GitHubUserSimple{Login: "renovate"}},
+			"author",
+			true,
 		},
 		{
 			"nil config",
 			nil,
-			PullRequest{User: GitHubUserSimple{Login: "renovate"}, Author: GitHubUserSimple{Login: "renovate"}, MergedBy: GitHubUserSimple{Login: "merger"}},
+			PullRequest{User: GitHubUserSimple{Login: "renovate"}, Author: GitHubUserSimple{Login: "renovate"}, MergedBy: GitHubUserSimple{Login: "renovate"}},
 			"renovate",
+			true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.config.ResponsibleUser(&tt.pr); got.Login != tt.expected {
-				t.Errorf("expected %v but got %v", tt.expected, got.Login)
+			got, ok := tt.config.ResponsibleUser(&tt.pr)
+			if got.Login != tt.expected || ok != tt.expectedOk {
+				t.Errorf("expected (%v, %v) but got (%v, %v)", tt.expected, tt.expectedOk, got.Login, ok)
 			}
 		})
 	}

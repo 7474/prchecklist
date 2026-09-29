@@ -112,7 +112,9 @@ func (u Usecase) GetChecklist(ctx context.Context, clRef prchecklist.ChecklistRe
 	for _, item := range checklist.Items {
 		item.Skipped = checklist.Config.ShouldSkip(item.Labels, checklist.Stage)
 		item.ByBot = checklist.Config.IsBot(item.Author.Login)
-		if user := checklist.Config.ResponsibleUser(item.PullRequest); user != item.User {
+		user, ok := checklist.Config.ResponsibleUser(item.PullRequest)
+		item.Unassigned = !ok
+		if user != item.User {
 			// Copy the pull request, which may be shared through the gateway's cache.
 			pr := *item.PullRequest
 			pr.User = user
@@ -198,16 +200,7 @@ func (u Usecase) AddCheck(ctx context.Context, clRef prchecklist.ChecklistRef, f
 	// TODO: check item existence?
 	go func(ctx context.Context) {
 		// notify in sequence
-		events := []notificationEvent{
-			addCheckEvent{checklist: checklist, item: checklist.Item(featNum), user: user},
-		}
-		if author := checklist.Item(featNum).User; checklist.CompletedChecksOfUser(author) {
-			events = append(events, completeChecksOfUserEvent{checklist: checklist, user: author})
-		}
-		if checklist.Completed() {
-			events = append(events, completeEvent{checklist: checklist})
-		}
-		for _, event := range events {
+		for _, event := range addCheckEvents(checklist, featNum, user) {
 			err := u.notifyEvent(ctx, checklist, event)
 			if err != nil {
 				log.Printf("notifyEvent(%v): %s", event, err)
@@ -216,6 +209,22 @@ func (u Usecase) AddCheck(ctx context.Context, clRef prchecklist.ChecklistRef, f
 	}(prchecklist.NewContextWithValuesOf(ctx))
 
 	return checklist, nil
+}
+
+// addCheckEvents returns the notification events to send when user checked the item for featNum.
+func addCheckEvents(checklist *prchecklist.Checklist, featNum int, user prchecklist.GitHubUser) []notificationEvent {
+	item := checklist.Item(featNum)
+	events := []notificationEvent{
+		addCheckEvent{checklist: checklist, item: item, user: user},
+	}
+	// Nobody is notified for an unassigned item; its User is a bot.
+	if !item.Unassigned && checklist.CompletedChecksOfUser(item.User) {
+		events = append(events, completeChecksOfUserEvent{checklist: checklist, user: item.User})
+	}
+	if checklist.Completed() {
+		events = append(events, completeEvent{checklist: checklist})
+	}
+	return events
 }
 
 // RemoveCheck removes a check from a checklist pointed by clRef.

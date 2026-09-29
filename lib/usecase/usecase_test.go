@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	prchecklist "github.com/motemen/prchecklist/v2"
 	"github.com/motemen/prchecklist/v2/lib/repository_mock"
@@ -169,6 +170,7 @@ func TestUseCase_GetChecklist_ResponsibleUserOfBotPullRequests(t *testing.T) {
 			{Message: "Merge pull request #2 "},
 			{Message: "Merge pull request #3 "},
 			{Message: "Merge pull request #4 "},
+			{Message: "Merge pull request #5 "},
 		},
 		ConfigBlobID: "DUMMY-CONFIG-BLOB-ID",
 	}, context.Background(), nil)
@@ -198,6 +200,12 @@ func TestUseCase_GetChecklist_ResponsibleUserOfBotPullRequests(t *testing.T) {
 		false,
 	).Return(&prchecklist.PullRequest{Number: 4, User: prchecklist.GitHubUserSimple{Login: "author"}, Author: prchecklist.GitHubUserSimple{Login: "author"}, MergedBy: merger}, context.Background(), nil)
 
+	github.EXPECT().GetPullRequest(
+		gomock.Any(),
+		prchecklist.ChecklistRef{Owner: "test", Repo: "test", Number: 5},
+		false,
+	).Return(&prchecklist.PullRequest{Number: 5, User: renovate, Author: renovate, MergedBy: renovate}, context.Background(), nil)
+
 	github.EXPECT().GetBlob(
 		gomock.Any(),
 		clRef,
@@ -226,10 +234,46 @@ bots:
 	assert.Equal(t, "merger", cl.Item(2).User.Login, "#2 is a bot pull request without assignees")
 	assert.True(t, cl.Item(2).ByBot)
 	assert.Equal(t, "renovate", botPullReq.User.Login, "the pull request returned by the gateway is not modified")
+	assert.False(t, cl.Item(2).Unassigned)
 	assert.Equal(t, "assignee", cl.Item(3).User.Login, "#3 is a bot pull request with an assignee")
 	assert.True(t, cl.Item(3).ByBot)
+	assert.False(t, cl.Item(3).Unassigned)
 	assert.Equal(t, "author", cl.Item(4).User.Login, "#4 is not a bot pull request")
 	assert.False(t, cl.Item(4).ByBot)
+	assert.False(t, cl.Item(4).Unassigned)
+	assert.True(t, cl.Item(5).Unassigned, "#5 is a bot pull request merged by itself")
+	assert.True(t, cl.Item(5).ByBot)
+	assert.Equal(t, "renovate", cl.Item(5).User.Login)
+}
+
+func TestAddCheckEvents_UnassignedItem(t *testing.T) {
+	renovate := prchecklist.GitHubUserSimple{Login: "renovate"}
+	checklist := &prchecklist.Checklist{
+		PullRequest: &prchecklist.PullRequest{},
+		Items: []*prchecklist.ChecklistItem{
+			{
+				PullRequest: &prchecklist.PullRequest{Number: 2, User: renovate, Author: renovate, MergedBy: renovate},
+				CheckedBy:   []prchecklist.GitHubUser{{Login: "motemen"}},
+				ByBot:       true,
+				Unassigned:  true,
+			},
+			{
+				PullRequest: &prchecklist.PullRequest{Number: 3, User: prchecklist.GitHubUserSimple{Login: "author"}},
+				CheckedBy:   []prchecklist.GitHubUser{},
+			},
+		},
+	}
+
+	events := addCheckEvents(checklist, 2, prchecklist.GitHubUser{Login: "motemen"})
+
+	require.Len(t, events, 1, "no completeChecksOfUserEvent for the bot")
+	assert.IsType(t, addCheckEvent{}, events[0])
+
+	checklist.Items[0].Unassigned = false
+	events = addCheckEvents(checklist, 2, prchecklist.GitHubUser{Login: "motemen"})
+
+	require.Len(t, events, 2)
+	assert.IsType(t, completeChecksOfUserEvent{}, events[1])
 }
 
 func setupMocks(clRef prchecklist.ChecklistRef, github *MockGitHubGateway, repo *repository_mock.MockCoreRepository) {

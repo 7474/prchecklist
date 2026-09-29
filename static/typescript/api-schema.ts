@@ -116,6 +116,12 @@ export interface ChecklistItem {
   Skipped: boolean;
   Title: string;
   URL: string;
+  /**
+   * Unassigned is true when nobody is responsible for the item,
+   * that is, when the feature pull request is authored by one of the Bots,
+   * has no assignees and was not merged by a user.
+   */
+  Unassigned: boolean;
   User: GitHubUserSimple;
 }
 /**

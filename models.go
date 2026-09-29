@@ -162,15 +162,19 @@ func (c *ChecklistConfig) IsBot(login string) bool {
 }
 
 // ResponsibleUser returns the user responsible for checking the feature pull request pr.
-// It is pr.User (the assignee if any, otherwise the author), except that
-// for a pull request authored by one of the Bots without assignees,
-// it is the user who merged the pull request.
-func (c *ChecklistConfig) ResponsibleUser(pr *PullRequest) GitHubUserSimple {
-	if c.IsBot(pr.Author.Login) && pr.Assignee.Login == "" &&
-		pr.MergedBy.Login != "" && !c.IsBot(pr.MergedBy.Login) {
-		return pr.MergedBy
+// It is pr.User (the assignee if any, otherwise the author), except for
+// a pull request authored by one of the Bots without assignees:
+// it is the user who merged the pull request, and if the pull request was merged
+// by a bot (e.g. by itself) or the merger is unknown, nobody is responsible for it
+// and ok is false.
+func (c *ChecklistConfig) ResponsibleUser(pr *PullRequest) (user GitHubUserSimple, ok bool) {
+	if !c.IsBot(pr.Author.Login) || pr.Assignee.Login != "" {
+		return pr.User, true
 	}
-	return pr.User
+	if pr.MergedBy.Login == "" || c.IsBot(pr.MergedBy.Login) {
+		return pr.User, false
+	}
+	return pr.MergedBy, true
 }
 
 // ChecklistItem is a checklist item, which belongs to a Checklist
@@ -185,6 +189,10 @@ type ChecklistItem struct {
 	// ByBot is true when the feature pull request is authored by one of
 	// the Bots in the configuration.
 	ByBot bool
+	// Unassigned is true when nobody is responsible for the item,
+	// that is, when the feature pull request is authored by one of the Bots,
+	// has no assignees and was not merged by a user.
+	Unassigned bool
 }
 
 // Checks is a value object obtained by repository.Repositor.GetChecks,
