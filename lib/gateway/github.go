@@ -103,6 +103,9 @@ type githubPullRequest struct {
 			Author struct {
 				Login string
 			}
+			MergedBy struct {
+				Login string
+			}
 			Assignees struct {
 				Edges []struct {
 					Node struct {
@@ -364,6 +367,12 @@ func (g githubGateway) getPullRequest(ctx context.Context, ref prchecklist.Check
 		User: prchecklist.GitHubUserSimple{
 			Login: qr.Repository.PullRequest.Author.Login,
 		},
+		Author: prchecklist.GitHubUserSimple{
+			Login: qr.Repository.PullRequest.Author.Login,
+		},
+		MergedBy: prchecklist.GitHubUserSimple{
+			Login: qr.Repository.PullRequest.MergedBy.Login,
+		},
 	}
 
 	for _, n := range qr.Repository.PullRequest.Labels.Nodes {
@@ -372,7 +381,8 @@ func (g githubGateway) getPullRequest(ctx context.Context, ref prchecklist.Check
 
 	// prefer assignee
 	if len(qr.Repository.PullRequest.Assignees.Edges) > 0 {
-		pullReq.User.Login = qr.Repository.PullRequest.Assignees.Edges[0].Node.Login
+		pullReq.Assignee.Login = qr.Repository.PullRequest.Assignees.Edges[0].Node.Login
+		pullReq.User = pullReq.Assignee
 	}
 
 	for _, e := range qr.Repository.PullRequest.HeadRef.Target.Tree.Entries {

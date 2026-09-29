@@ -9,6 +9,8 @@ export type ErrorType = "not_authed";
  * and the "release" pull request is about to merge into master.
  */
 export interface Checklist {
+  Assignee: GitHubUserSimple;
+  Author: GitHubUserSimple;
   Body: string;
   /**
    * Filled for "base" pull reqs
@@ -19,6 +21,7 @@ export interface Checklist {
   IsPrivate: boolean;
   Items: ChecklistItem[];
   Labels: string[];
+  MergedBy: GitHubUserSimple;
   Number: number;
   Owner: string;
   Repo: string;
@@ -26,6 +29,12 @@ export interface Checklist {
   Title: string;
   URL: string;
   User: GitHubUserSimple;
+}
+/**
+ * GitHubUserSimple is a minimalistic GitHub user data.
+ */
+export interface GitHubUserSimple {
+  Login: string;
 }
 /**
  * Commit is a commit data on GitHub.
@@ -39,6 +48,12 @@ export interface Commit {
  * which is specified by prchecklist.yml on the top of the repository.
  */
 export interface ChecklistConfig {
+  /**
+   * Bots lists the logins of bot accounts, such as renovate[bot] or dependabot[bot].
+   * The responsible user for a feature pull request authored by one of them
+   * is its assignee, or the user who merged it if it has no assignee.
+   */
+  Bots: string[];
   Notification: {
     Channels: {
       [k: string]: {
@@ -74,7 +89,14 @@ export interface SkipLabel {
  * and can be checked by multiple GitHubUsers.
  */
 export interface ChecklistItem {
+  Assignee: GitHubUserSimple;
+  Author: GitHubUserSimple;
   Body: string;
+  /**
+   * ByBot is true when the feature pull request is authored by one of
+   * the Bots in the configuration.
+   */
+  ByBot: boolean;
   CheckedBy: GitHubUser[];
   /**
    * Filled for "base" pull reqs
@@ -83,6 +105,7 @@ export interface ChecklistItem {
   ConfigBlobID: string;
   IsPrivate: boolean;
   Labels: string[];
+  MergedBy: GitHubUserSimple;
   Number: number;
   Owner: string;
   Repo: string;
@@ -93,6 +116,12 @@ export interface ChecklistItem {
   Skipped: boolean;
   Title: string;
   URL: string;
+  /**
+   * Unassigned is true when nobody is responsible for the item,
+   * that is, when the feature pull request is authored by one of the Bots,
+   * has no assignees and was not merged by a user.
+   */
+  Unassigned: boolean;
   User: GitHubUserSimple;
 }
 /**
@@ -103,12 +132,6 @@ export interface ChecklistItem {
 export interface GitHubUser {
   AvatarURL: string;
   ID: number;
-  Login: string;
-}
-/**
- * GitHubUserSimple is a minimalistic GitHub user data.
- */
-export interface GitHubUserSimple {
   Login: string;
 }
 /**
@@ -147,8 +170,12 @@ export interface MeResponse {
 }
 /**
  * PullRequest represens a pull request on GitHub.
+ * User is the user responsible for the pull request: the assignee if any,
+ * otherwise the author. For checklist items, see also ChecklistConfig.ResponsibleUser.
  */
 export interface PullRequest {
+  Assignee: GitHubUserSimple;
+  Author: GitHubUserSimple;
   Body: string;
   /**
    * Filled for "base" pull reqs
@@ -157,6 +184,7 @@ export interface PullRequest {
   ConfigBlobID: string;
   IsPrivate: boolean;
   Labels: string[];
+  MergedBy: GitHubUserSimple;
   Number: number;
   Owner: string;
   Repo: string;

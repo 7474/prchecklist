@@ -41,6 +41,9 @@ skip:
     - name: no-production-check-needed
       stages:
         - production
+bots:
+  - renovate[bot]
+  - dependabot[bot]
 ~~~
 
 This configuration says:
@@ -49,6 +52,7 @@ This configuration says:
 - And when a checklist item is checked, a Slack notification is sent,
 - And when a checklist is completed, a Slack notification is sent to another Slack channel.
 - And the items for feature pull requests labeled `no-check-needed` are skipped on all the stages, and the ones labeled `no-production-check-needed` are skipped only on the production stage. Skipped items are not required to be checked for the checklist to be completed.
+- And the items for feature pull requests authored by `renovate[bot]` or `dependabot[bot]` are on the assignee of the pull request, or on the user who merged it if it has no assignee, instead of the bot. They are shown as "@user via @bot", and the `on_complete_checks_of_user` notification is sent for that user. If such a pull request has no assignee and was merged by a bot (e.g. by itself), nobody is responsible for it: it is shown as "unassigned", and no `on_complete_checks_of_user` notification is sent for it. The `[bot]` suffix can be omitted.
 
 ## Development
 

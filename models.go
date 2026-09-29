@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
@@ -89,6 +90,10 @@ type ChecklistConfig struct {
 	Skip struct {
 		Labels []SkipLabel
 	}
+	// Bots lists the logins of bot accounts, such as renovate[bot] or dependabot[bot].
+	// The responsible user for a feature pull request authored by one of them
+	// is its assignee, or the user who merged it if it has no assignee.
+	Bots         []string
 	Notification struct {
 		Events struct {
 			OnComplete             []string `yaml:"on_complete"`                // channel names
@@ -140,6 +145,38 @@ func (c *ChecklistConfig) ShouldSkip(labels []string, stage string) bool {
 	return false
 }
 
+// IsBot returns whether login is one of the Bots.
+// The "[bot]" suffix is ignored, because GitHub's GraphQL API omits it
+// while the REST API and the web UI include it.
+func (c *ChecklistConfig) IsBot(login string) bool {
+	if c == nil || login == "" {
+		return false
+	}
+	login = strings.TrimSuffix(login, "[bot]")
+	for _, bot := range c.Bots {
+		if strings.TrimSuffix(bot, "[bot]") == login {
+			return true
+		}
+	}
+	return false
+}
+
+// ResponsibleUser returns the user responsible for checking the feature pull request pr.
+// It is pr.User (the assignee if any, otherwise the author), except for
+// a pull request authored by one of the Bots without assignees:
+// it is the user who merged the pull request, and if the pull request was merged
+// by a bot (e.g. by itself) or the merger is unknown, nobody is responsible for it
+// and ok is false.
+func (c *ChecklistConfig) ResponsibleUser(pr *PullRequest) (user GitHubUserSimple, ok bool) {
+	if !c.IsBot(pr.Author.Login) || pr.Assignee.Login != "" {
+		return pr.User, true
+	}
+	if pr.MergedBy.Login == "" || c.IsBot(pr.MergedBy.Login) {
+		return pr.User, false
+	}
+	return pr.MergedBy, true
+}
+
 // ChecklistItem is a checklist item, which belongs to a Checklist
 // and can be checked by multiple GitHubUsers.
 type ChecklistItem struct {
@@ -149,6 +186,13 @@ type ChecklistItem struct {
 	// Skipped is true when the item does not need to be checked,
 	// according to the Skip configuration.
 	Skipped bool
+	// ByBot is true when the feature pull request is authored by one of
+	// the Bots in the configuration.
+	ByBot bool
+	// Unassigned is true when nobody is responsible for the item,
+	// that is, when the feature pull request is authored by one of the Bots,
+	// has no assignees and was not merged by a user.
+	Unassigned bool
 }
 
 // Checks is a value object obtained by repository.Repositor.GetChecks,
@@ -211,6 +255,8 @@ func (clRef ChecklistRef) Validate() error {
 }
 
 // PullRequest represens a pull request on GitHub.
+// User is the user responsible for the pull request: the assignee if any,
+// otherwise the author. For checklist items, see also ChecklistConfig.ResponsibleUser.
 type PullRequest struct {
 	URL       string
 	Title     string
@@ -220,6 +266,9 @@ type PullRequest struct {
 	Number    int
 	IsPrivate bool
 	User      GitHubUserSimple
+	Author    GitHubUserSimple
+	Assignee  GitHubUserSimple
+	MergedBy  GitHubUserSimple
 	Labels    []string
 
 	// Filled for "base" pull reqs

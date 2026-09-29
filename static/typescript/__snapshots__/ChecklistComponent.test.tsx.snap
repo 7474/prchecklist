@@ -250,7 +250,15 @@ exports[` 2`] = `
           class="user"
         >
           @
-          werckerbot
+          motemen
+          <span
+            class="via"
+            title="Authored by werckerbot"
+          >
+             
+            via @
+            werckerbot
+          </span>
         </div>
          
         <div
@@ -286,10 +294,16 @@ exports[` 2`] = `
         </div>
          
         <div
-          class="user"
+          class="user unassigned"
+          title="Nobody is responsible: authored by werckerbot, not assigned, and not merged by a user"
         >
-          @
-          motemen
+          unassigned
+          <span
+            class="via"
+          >
+             via @
+            werckerbot
+          </span>
         </div>
          
         <div
